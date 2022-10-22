@@ -1,19 +1,17 @@
 <template>
-  <div id="app">
-    <item
-        :id="item.id"
-        :title="item.title"
-        :children="item.children"
-        :is-folder="item.hasOwnProperty('children')"
-        @remove="onRemove"
-        @add-file="onAddFile"
-        @add-folder="onAddFolder"
-    />
-  </div>
+  <item
+      :id="item.id"
+      :title="item.title"
+      :children="item.children"
+      :is-folder="!!item.children"
+      @remove="onRemove"
+      @create="onCreate"
+  />
 </template>
 
 <script>
 import Item from './components/Item.vue'
+import itemFactory from "./itemFactory";
 
 export default {
   name: 'App',
@@ -22,58 +20,38 @@ export default {
   },
   data() {
     return {
-      item: {
-        "id": 0,
-        "title": "Root",
-        "children": [],
-      },
-      newId: 1,
+      item: itemFactory('Root', true),
     }
   },
   methods: {
     findItem(items, id) {
-      if (id===0) return this.item;
+      if (id === 0) return this.item;
       for (const subItem of items) {
-        if (subItem.id===id) return subItem;
+        if (subItem.id === id) return subItem;
         if (subItem.children?.length) {
           const item = this.findItem(subItem.children, id)
           if (item) return item;
         }
       }
     },
-    onAddFile(itemId = 0) {
-      const title = prompt('What is your file title?')
-      if (!title) return;
-      const currentItem = this.findItem(this.item.children, itemId);
-      currentItem.children.push({
-        id: this.newId,
-        title,
-      })
-      this.newId += 1;
-    },
-    onAddFolder(itemId = 0) {
-      console.log((itemId))
-      const title = prompt('What is your folder title?')
-      if (!title) return;
-      const currentItem = this.findItem(this.item.children, itemId);
-      currentItem.children.push({
-        id: this.newId,
-        title,
-        children: [],
-      })
-      this.newId += 1;
-    },
-    onRemove(id) {
-      this.item.children = this.filteredItem(this.item, id)
-    },
-    filteredItem(items, id) {
+    filterItem(items, id) {
       return items.children
-          .filter((item) => item.id!==id)
+          .filter((item) => item.id !== id)
           .map((item) => {
             if (!item.children) return item;
-            item.children = this.filteredItem(item, id);
+            item.children = this.filterItem(item, id);
             return item;
           });
+    },
+    onCreate(parentId = 0, isFolder) {
+      const title = prompt('What is the title?')
+      if (!title) return;
+      const newItem = itemFactory(title, isFolder);
+      const parentItem = this.findItem(this.item.children, parentId);
+      parentItem.children.push(newItem)
+    },
+    onRemove(id) {
+      this.item.children = this.filterItem(this.item, id)
     },
   }
 }
